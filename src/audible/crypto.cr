@@ -1,7 +1,37 @@
 require "crc32"
 require "base64"
+require "openssl/cipher"
+require "openssl_ext"
 
-def encrypt(metadata)
+def sign_request(url, method, body, adp_token, rsa, date = Time.now.to_rfc3339)
+  url = URI.parse(url)
+  path = url.path.not_nil!
+  query = url.query
+
+  url = path
+  if query
+    url += "?#{query}"
+  end
+
+  data = "#{method}\n#{url}\n#{date}\n"
+  if body
+    data += body
+  end
+  data += "\n"
+  data += adp_token
+
+  digest = OpenSSL::Digest.new("sha256")
+  signed = Base64.strict_encode(rsa.sign(digest, data))
+  signature = "#{signed}:#{date}"
+
+  return {
+    "x-adp-token"     => adp_token,
+    "x-adp-alg"       => "SHA256withRSA:1.0",
+    "x-adp-signature" => signature,
+  }
+end
+
+def encrypt_metadata(metadata)
   checksum = CRC32.checksum(metadata).to_s(16).rjust(8, '0').upcase
   object = "#{checksum}##{metadata}"
 
