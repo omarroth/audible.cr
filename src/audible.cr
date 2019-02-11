@@ -5,6 +5,10 @@ require "xml"
 require "./audible/*"
 
 AMAZON_URL = URI.parse("https://www.amazon.com")
+AMAZON_API = URI.parse("https://api.amazon.com")
+
+module Audible
+end
 
 def login(email, password)
   client = HTTP::Client.new(AMAZON_URL)
@@ -47,7 +51,7 @@ def login(email, password)
   headers["Referer"] = "https://www.amazon.com/ap/signin"
   headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-  response = client.post(signin_url, headers, form: body)
+  response = client.post(signin_url, headers, body: body)
   File.write("response.html", response.body)
   headers = add_request_headers(response, headers)
 end
@@ -59,10 +63,10 @@ def add_request_headers(response, headers)
   new_cookies.each do |cookie|
     if cookies[cookie.name]?
       if cookie.value != %("")
-        cookies[cookie.name] = cookie.value.strip('"')
+        cookies[cookie.name] = cookie.value
       end
     else
-      cookies[cookie.name] = cookie.value.strip('"')
+      cookies[cookie.name] = cookie.value
     end
   end
 
