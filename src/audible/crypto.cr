@@ -97,7 +97,7 @@ def decrypt_metadata(metadata)
   end
 
   rounds = temp2.size
-  minor_rounds = (6 + (52/rounds)).floor
+  minor_rounds = (6 + (52 / rounds)).floor
 
   wrap_constant = 2654435769
   constants = [1888420705, 2576816180, 2347232058, 874813317]
