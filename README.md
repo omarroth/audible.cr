@@ -46,7 +46,11 @@ Answer for CAPTCHA:
 
 ## Authentication
 
-Request signing is fairly straight-forward. Signing uses the RSA key provided by `/auth/register`. Headers look like:
+Clients are authenticated using OpenID. Once a client has successfully authenticated with Amazon, they are given an access token and refresh token for authenticating with Audible.
+
+Clients authenticate with Audible using cookies from Amazon and the given access token to `/auth/register`. Clients are given an RSA private key and adp_token used for signing subsequent requess.
+
+For requests to the Audible API, requests need to be signed using the provided key and adp_token. Request signing is fairly straight-forward and uses a signed SHA256 digest. Headers look like:
 
 ```
 x-adp-alg: SHA256withRSA:1.0
@@ -60,7 +64,7 @@ It also appears to be possible to authenticate using:
 Authentication: Bearer access_token
 ```
 
-Although this has not been tested.
+And a given client ID, although this has not been tested.
 
 ## Documentation:
 
