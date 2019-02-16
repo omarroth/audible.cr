@@ -3,25 +3,34 @@ require "base64"
 require "openssl/cipher"
 require "openssl_ext"
 
-def sign_request(url, method, body, adp_token, rsa, date = Time.now.to_rfc3339)
-  url = URI.parse(url)
-  path = url.path.not_nil!
-  query = url.query
+def sign_request(request : HTTP::Request, adp_token, private_key)
+  path = request.path
+  query = request.query
 
   url = path
   if query
     url += "?#{query}"
   end
 
+  sign_request(url, request.method, request.body, adp_token, private_key).each do |key, value|
+    request.headers[key] = value
+  end
+
+  return request
+end
+
+def sign_request(url, method, body, adp_token, private_key, date = Time.now.to_rfc3339)
   data = "#{method}\n#{url}\n#{date}\n"
   if body
-    data += body
+    data += body.gets_to_end
+    body.rewind
   end
   data += "\n"
+
   data += adp_token
 
   digest = OpenSSL::Digest.new("sha256")
-  signed = Base64.strict_encode(rsa.sign(digest, data))
+  signed = Base64.strict_encode(private_key.sign(digest, data))
   signature = "#{signed}:#{date}"
 
   return {

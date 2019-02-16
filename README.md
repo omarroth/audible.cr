@@ -30,13 +30,8 @@ refresh_token = tokens["bearer"]["refresh_token"].as_s
 
 client = HTTP::Client.new(Audible::AUDIBLE_API)
 
-url = "/0.0/library/books?purchaseAfterDate=01/01/1970"
-headers = HTTP::Headers.new
-sign_request(url, "GET", "", adp_token, device_private_key).each do |key, value|
-  headers[key] = value
-end
-
-client.get(url, headers).body # => <books><total_book_count>35</total_book_count><book><title>The Master and...
+request = sign_request(HTTP::Request.new("GET", "/0.0/library/books?purchaseAfterDate=01/01/1970"), adp_token, device_private_key)
+client.exec(request).body # => <books><total_book_count>35</total_book_count><book><title>The Master and...
 ```
 
 Clients should remember `access_token`, `refresh_token`, `adp_token`, `device_private_key` when possible.
@@ -302,44 +297,40 @@ require "audible"
 asin = "B002V5H6F4"
 
 client = HTTP::Client.new(URI.parse("https://cde-ta-g7g.amazon.com"))
-url = "/FionaCDEServiceEngine/FSDownloadContent?type=AUDI&currentTransportMethod=WIFI&key=#{asin}"
-
-headers = HTTP::Headers.new
-sign_request(url, "GET", "", adp_token, device_private_key).each do |key, value|
-  headers[key] = value
-end
-
-response = client.get(url, headers)
+request = sign_request(
+  HTTP::Request.new("GET", "/FionaCDEServiceEngine/FSDownloadContent?type=AUDI&currentTransportMethod=WIFI&key=#{asin}"),
+  adp_token,
+  device_private_key
+)
+response = client.exec(request)
 
 client = HTTP::Client.new(URI.parse("https://cds.audible.com"))
-url = response.headers["Location"]
+request = sign_request(
+  HTTP::Request.new("GET", response.headers["Location"]),
+  adp_token,
+  device_private_key
+)
 
-headers = HTTP::Headers.new
-sign_request(url, "GET", "", adp_token, device_private_key).each do |key, value|
-  headers[key] = value
-end
-
-client.get(url, headers) do |response|
+client.exec(request) do |response|
   filename = response.headers["Content-Disposition"].split("filename=")[1]
   content_length = response.headers["Content-Length"]
   file = File.open(filename, mode: "w")
 
   bytes_written = 0
+  size = 1
 
-  begin
-    chunk_size = 4096
-    size = 1
-    while size > 0
-      size = IO.copy(response.body_io, file, chunk_size)
-      bytes_written += size
+  while size > 0
+    size = IO.copy(response.body_io, file, 4096)
+    bytes_written += size
 
-      print "#{bytes_written}/#{content_length} #{(bytes_written.to_f/content_length.to_f)*100}%           \r"
-      file.flush
-    end
-  rescue ex
-    break
+    percentage = ((bytes_written.to_f / content_length.to_f) * 100).round(2)
+    print "#{percentage}%\r"
+    file.flush
   end
 end
+
+puts "100%   "
+
 ```
 
 Assuming you have your activation bytes, you can convert .aax into another format with the following:
