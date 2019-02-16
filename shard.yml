@@ -5,9 +5,10 @@ authors:
   - Omar Roth <omarroth@hotmail.com>
 
 dependencies:
-  marpa:
-    github: omarroth/marpa
+  openssl_ext:
+    github: randomstate/openssl_ext
+    branch: master
 
-crystal: 0.27.0
+crystal: 0.27.2
 
 license: MIT
