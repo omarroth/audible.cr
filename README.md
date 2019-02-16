@@ -98,10 +98,21 @@ Responses will often provide very little info without `response_groups` specifie
 - response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
 - sort_by: [-DateAdded, Price, -Rating, Author, -Title, DateAdded, -Author, Title, -Price, Rating]
 
+### GET /1.0/badges/progress
+
+- locale: en_US
+- response_groups: brag_message
+- store: Audible
+
+### GET /1.0/badges/metadata
+
+- locale: en_US
+- response_groups: all_levels_metadata
+
 ### GET /1.0/account/information
 
 - response_groups: [delinquency_status, customer_benefits, subscription_details_payment_instrument, plan_summary, subscription_details]
-- source:
+- source: [Enterprise, RodizioFreeBasic, AyceRomance, AllYouCanEat, AmazonEnglish, ComplimentaryOriginalMemberBenefit, Radio, SpecialBenefit, Rodizio]
 
 ### POST(?) /1.0/library/collections/%s/channels/%s
 
@@ -181,9 +192,12 @@ Responses will often provide very little info without `response_groups` specifie
 
 ### GET /1.0/pages/%s
 
-- locale:
+%s: ios-app-home
+
+- locale: en-US
 - reviews_num_results:
 - reviews_sort_by:
+- response_groups: [media, product_plans, view, product_attrs, contributors, product_desc, sample]
 
 ### GET /1.0/catalog/products/%s
 
@@ -262,6 +276,62 @@ Responses will often provide very little info without `response_groups` specifie
 - asin:
 
 ### POST(?) /1.0/library/item/%s/%s
+
+## Downloading Books
+
+Quite ugly, but the following will allow you to download the .aax for a given `asin`, provided the book is in your library:
+
+```crystal
+require "audible"
+
+asin = "B002V5H6F4"
+
+client = HTTP::Client.new(URI.parse("https://cde-ta-g7g.amazon.com"))
+url = "/FionaCDEServiceEngine/FSDownloadContent?type=AUDI&currentTransportMethod=WIFI&key=#{asin}"
+
+headers = HTTP::Headers.new
+sign_request(url, "GET", "", adp_token, device_private_key).each do |key, value|
+  headers[key] = value
+end
+
+response = client.get(url, headers)
+
+client = HTTP::Client.new(URI.parse("https://cds.audible.com"))
+url = response.headers["Location"]
+
+headers = HTTP::Headers.new
+sign_request(url, "GET", "", adp_token, device_private_key).each do |key, value|
+  headers[key] = value
+end
+
+client.get(url, headers) do |response|
+  filename = response.headers["Content-Disposition"].split("filename=")[1]
+  content_length = response.headers["Content-Length"]
+  file = File.open(filename, mode: "w")
+
+  bytes_written = 0
+
+  begin
+    chunk_size = 4096
+    size = 1
+    while size > 0
+      size = IO.copy(response.body_io, file, chunk_size)
+      bytes_written += size
+
+      print "#{bytes_written}/#{content_length} #{(bytes_written.to_f/content_length.to_f)*100}%           \r"
+      file.flush
+    end
+  rescue ex
+    break
+  end
+end
+```
+
+Assuming you have your activation bytes, you can convert .aax into another format with the following:
+
+```
+$ ffmpeg -activation_bytes 1CEB00DA -i test.aax -vn -c:a copy output.mp4
+```
 
 ## Contributing
 
