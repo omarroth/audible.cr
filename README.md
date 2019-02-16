@@ -98,6 +98,24 @@ Responses will often provide very little info without `response_groups` specifie
 - response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
 - sort_by: [-DateAdded, Price, -Rating, Author, -Title, DateAdded, -Author, Title, -Price, Rating]
 
+### POST /1.0/wishlist
+
+- B asin : String
+
+Example request body:
+
+```json
+{
+  "asin": "B002V02KPU"
+}
+```
+
+Returns 201 and a `Location` to the resource.
+
+### DELETE /1.0/wishlist/%s
+
+Returns 204 and removes the item from the wishlist using the given `asin`.
+
 ### GET /1.0/badges/progress
 
 - locale: en_US
@@ -150,17 +168,13 @@ Responses will often provide very little info without `response_groups` specifie
 
 - acr:
 
-### POST(?) /1.0/library/collections
-
-- collection_type:
-
 ### GET /1.0/customer/information
 
 - response_groups: [migration_details, subscription_details_rodizio, subscription_details_premium, customer_segment, subscription_details_channels]
 
 ### GET /1.0/customer/status
 
-- response_groups: [prime_benefits_status, member_giving_status, prospect_benefits_status, benefits_status]
+- response_groups: [benefits_status, member_giving_status, prime_benefits_status, prospect_benefits_status]
 
 ### GET /1.0/customer/freetrial/eligibility
 
@@ -168,6 +182,10 @@ Responses will often provide very little info without `response_groups` specifie
 
 - customer_id:
 - marketplace:
+
+### POST(?) /1.0/library/collections
+
+- collection_type:
 
 ### GET /1.0/library/collections/%s
 
@@ -183,6 +201,8 @@ Responses will often provide very little info without `response_groups` specifie
 - page_size:
 - continuation_token:
 - image_sizes:
+
+### GET /1.0/stats/status/finished
 
 ### POST(?) /1.0/stats/status/finished
 
@@ -201,10 +221,11 @@ Responses will often provide very little info without `response_groups` specifie
 
 ### GET /1.0/catalog/products/%s
 
-- reviews_num_results:
-- reviews_sort_by:
-- image_sizes:
 - image_dpi:
+- image_sizes:
+- response_groups: [contributors, media, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, review_attrs, reviews, sample, sku]
+- reviews_num_results: \\d+ (max: 10)
+- reviews_sort_by: [MostHelpful, MostRecent]
 
 ### GET /1.0/catalog/products/%s/reviews
 
@@ -216,7 +237,7 @@ Responses will often provide very little info without `response_groups` specifie
 
 - author:
 - browse_type:
-- category_id:
+- category_id: \\d+(,\\d+)\*
 - disjunctive_category_ids:
 - image_dpi: \\d+
 - image_sizes:
@@ -227,11 +248,12 @@ Responses will often provide very little info without `response_groups` specifie
 - num_most_recent:
 - num_results: \\d+ (max: 50)
 - page: \\d+
-- plan:
+- plan: [Enterprise, RodizioFreeBasic, AyceRomance, AllYouCanEat, AmazonEnglish, ComplimentaryOriginalMemberBenefit, Radio, SpecialBenefit, Rodizio]
 - products_since_timestamp:
 - products_sort_by: [-ReleaseDate, ContentLevel, -Title, AmazonEnglish, AvgRating, BestSellers, -RuntimeLength, ReleaseDate, ProductSiteLaunchDate, -ContentLevel, Title, Relevance, RuntimeLength]
 - publisher:
-- reviews_num_results:
+- response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_detail, product_plans, rating, review_attrs, reviews, sample, sku]
+- reviews_num_results: \\d+ (max: 10)
 - reviews_sort_by: [MostHelpful, MostRecent]
 - title:
 
@@ -243,19 +265,11 @@ Responses will often provide very little info without `response_groups` specifie
 - in_plan_timestamp:
 - language:
 - not_in_plan_timestamp:
-- num_results:
-- plan:
-- reviews_num_results:
-- reviews_sort_by:
-
-### POST(?) /1.0/library/collections/%s/channels/%s
-
-- customer_id:
-- marketplace:
-
-### POST(?) /1.0/library/collections/%s/products/%s
-
-- channel_id:
+- num_results: \\d+ (max: 50)
+- plan: [Enterprise, RodizioFreeBasic, AyceRomance, AllYouCanEat, AmazonEnglish, ComplimentaryOriginalMemberBenefit, Radio, SpecialBenefit, Rodizio]
+- response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
+- reviews_num_results: \\d+ (max: 10)
+- reviews_sort_by: [MostHelpful, MostRecent]
 
 ### GET /1.0/catalog/products/%s/sims
 
@@ -265,11 +279,12 @@ Responses will often provide very little info without `response_groups` specifie
 - in_plan_timestamp:
 - language:
 - not_in_plan_timestamp:
-- num_results:
-- plan:
-- reviews_num_results:
-- reviews_sort_by:
-- similarity_type:
+- num_results: \\d+ (max: 50)
+- plan: [Enterprise, RodizioFreeBasic, AyceRomance, AllYouCanEat, AmazonEnglish, ComplimentaryOriginalMemberBenefit, Radio, SpecialBenefit, Rodizio]
+- response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plans, rating, review_attrs, reviews, sample, sku]
+- reviews_num_results: \\d+ (max: 10)
+- reviews_sort_by: [MostHelpful, MostRecent]
+- similarity_type: [InTheSameSeries, ByTheSameNarrator, RawSimilarities, ByTheSameAuthor, NextInSameSeries]
 
 ### POST(?) /1.0/library/item
 
