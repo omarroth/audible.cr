@@ -89,6 +89,8 @@ Responses will often provide very little info without `response_groups` specifie
 ### GET /0.0/library/books
 
 - purchaseAfterDate: mm/dd/yyyy
+- sortByColumn: [SHORT_TITLE, strTitle, DOWNLOAD_STATUS, RUNNING_TIME, sortPublishDate, SHORT_AUTHOR, sortPurchDate, DATE_AVAILABLE]
+- sortInAscendingOrder: [true, false]
 
 ### GET /1.0/wishlist
 
