@@ -113,7 +113,7 @@ Example request body:
 
 Returns 201 and a `Location` to the resource.
 
-### DELETE /1.0/wishlist/%s
+### DELETE /1.0/wishlist/%{asin}
 
 Returns 204 and removes the item from the wishlist using the given `asin`.
 
@@ -148,7 +148,7 @@ Returns 204 and removes the item from the wishlist using the given `asin`.
 - ids: \\d+(,\\d+)\*
 - root: [InstitutionsHpMarketing, ChannelsConfigurator, AEReadster, ShortsPrime, ExploreBy, RodizioBuckets, EditorsPicks, ClientContent, RodizioGenres, AmazonEnglishProducts, ShortsSandbox, Genres, Curated, ShortsIntroOutroRemoval, Shorts, RodizioEpisodesAndSeries, ShortsCurated]
 
-### GET /1.0/catalog/categories/%s
+### GET /1.0/catalog/categories/%{category_id}
 
 - image_dpi: \\d+
 - image_sizes:
@@ -161,11 +161,25 @@ Returns 204 and removes the item from the wishlist using the given `asin`.
 - reviews_num_results: \\d+
 - reviews_sort_by: [MostHelpful, MostRecent]
 
-### GET(?) /1.0/content/%s/licenserequest
+### POST /1.0/content/%{asin}/licenserequest
 
-- ?
+- B consumption_type: [Streaming, Offline, Download]
+- B drm_type: [Hls, PlayReady, Hds, Adrm]
 
-### GET /1.0/content/%s/metadata
+Example request body:
+
+```json
+{
+  "drm_type": "Hls",
+  "consumption_type": "Download"
+}
+```
+
+### GET /1.0/annotations/lastpositions
+
+- asins: asin (comma-separated), e.g. ?asins=B01LWUJKQ7,B01LWUJKQ7,B01LWUJKQ7
+
+### GET /1.0/content/%{asin}/metadata
 
 - acr:
 
@@ -228,7 +242,7 @@ Returns 204 and removes the item from the wishlist using the given `asin`.
 - reviews_num_results: \\d+ (max: 10)
 - reviews_sort_by: [MostHelpful, MostRecent]
 
-### GET /1.0/catalog/products/%s/reviews
+### GET /1.0/catalog/products/%{asin}/reviews
 
 - sort_by: [MostHelpful, MostRecent]
 - num_results: \\d+ (max: 50)
@@ -272,7 +286,7 @@ Returns 204 and removes the item from the wishlist using the given `asin`.
 - reviews_num_results: \\d+ (max: 10)
 - reviews_sort_by: [MostHelpful, MostRecent]
 
-### GET /1.0/catalog/products/%s/sims
+### GET /1.0/catalog/products/%{asin}/sims
 
 - category_image_variants:
 - image_dpi:
