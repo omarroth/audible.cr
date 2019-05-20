@@ -219,6 +219,8 @@ Example request body:
 
 ### GET /1.0/stats/status/finished
 
+- asin:
+
 ### POST(?) /1.0/stats/status/finished
 
 - start_date:
@@ -234,7 +236,7 @@ Example request body:
 - reviews_sort_by:
 - response_groups: [media, product_plans, view, product_attrs, contributors, product_desc, sample]
 
-### GET /1.0/catalog/products/%s
+### GET /1.0/catalog/products/%{asin}
 
 - image_dpi:
 - image_sizes:
