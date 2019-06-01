@@ -109,7 +109,6 @@ module Audible
       map_landing = HTTP::Params.parse(URI.parse(response.headers["Location"]).query.not_nil!)
 
       login_object = {
-        "aToken"       => map_landing["aToken"],
         "access_token" => map_landing["openid.oa2.access_token"],
         "cookies"      => {} of String => String,
       }

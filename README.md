@@ -31,7 +31,7 @@ refresh_token = tokens["bearer"]["refresh_token"].as_s
 client = HTTP::Client.new(Audible::AUDIBLE_API)
 
 request = sign_request(HTTP::Request.new("GET", "/0.0/library/books?purchaseAfterDate=01/01/1970"), adp_token, device_private_key)
-client.exec(request).body # => <books><total_book_count>35</total_book_count><book><title>The Master and...
+puts client.exec(request).body # => <books><total_book_count>35</total_book_count><book><title>The Master and...
 ```
 
 Clients should remember `access_token`, `refresh_token`, `adp_token`, `device_private_key` when possible.
@@ -48,7 +48,7 @@ Answer for CAPTCHA:
 
 Clients are authenticated using OpenID. Once a client has successfully authenticated with Amazon, they are given an access token and refresh token for authenticating with Audible.
 
-Clients authenticate with Audible using cookies from Amazon and the given access token to `/auth/register`. Clients are given an RSA private key and adp_token used for signing subsequent requess.
+Clients authenticate with Audible using cookies from Amazon and the given access token to `/auth/register`. Clients are given an RSA private key and adp_token used for signing subsequent requests.
 
 For requests to the Audible API, requests need to be signed using the provided key and adp_token. Request signing is fairly straight-forward and uses a signed SHA256 digest. Headers look like:
 
