@@ -32,4 +32,67 @@ describe Audible do
       decrypt_metadata(metadata).should eq(plaintext)
     end
   end
+
+  describe "#sign_request" do
+    adp_token = "{9wPSfh0zRvKQq6AvrDz3GMwfMBghMY+bHTsxau28WyATbnJ4WV3M13ZoX+e7FCwBidO933b1doseVesk6AIKUlOyuWHbbPZ5owpuYrefb7AYQvFGJiOI5YvMK+x8BzTzKtQ8vEMmU5SNfJttcNjhhqz5gqZ3EkQ2Ef3rhznmsk03pE7qCsFd/6vsusrpCnGoXqWkXvZ+mKpB1lDnOzR/L3ACERYiHvYM8QbkCZQa1kgG2O7hD5djEaMfYDub/jMwhu7uESdd/fAkPj1LGcfZ31e6xhwfDff0kZ1EiEbz6O0acRoj6uEy996anc0/WPUY14hqa7FuE5kSuLlppzHRBsPl/1GpOuAHAAST7m7UXBSylq2v6M64dU+tkF6rFyncZK/zOGKK/eMEv4GgxVwHCcIJeOArU53cGlCd6A86dgyAcvdWnt+yo0T9xIwhU6DyPlWEVoBXsZSKQRQQDJsK9Edjbf1ozZjt9RUVTpNH3sbY6nx1skDUE58p2Od2H4XIHtNqEpCiDs9gprYT5AVbpX0wCuO7KSBB5RmQH4uFhtpTlqOSw9GVyKvo1bXgMD6d9Tc78RqO+3FVKxTxtvVmhRQmG/rgrGSgqDITmkfXjCIznekVirCB7SP68W9DhJVjvgN0M0iHEfEpMiKEGKLtv8V4afcK1vfWX90c89UI4jHBXCSYmJzf29ZYeD0bH/ykql6k/3atvWPlG40wi7l3i3MpLDsYnXJxHxsMb83Tg49KtKGoTtemVaum5H3gsebR2bnlWd6fQUq5SGAbwarqapKgpOiy4twZmNDpAbdGu+w5Jj6SRDDXsOzYA1f57K3hSe8x+vsuUrR3MaRTTc+bV0fHqcWwP5FySN/ougudtCfd+ikLSeGoiWfvh/aoOjFG98Z42S2Gk+zsiE4Cf/08S0qJGOkVUVAdndoePwQRQAvYLcRhvR5C17W+vhtoQdz+8S9bMVfYn7pLiA+hoahwXpU2OrsQDjdSmqN+7S5azW0AKi6ATP/1pPU/EByTlrEPC6CvmGQGtMt7fY2IscBboQ==}{iv:072BWbEELkzH8UQRR3MzfQ==}{key:8HnETJjyaHxQt4eP874f4k/U7lMh8/ZRsMWYxjnzq2zJPebsLxovTkKqUiXiq6Xq+EfTSOROoLdwBmByoTGPFjG6ha/JeKw/3u3WM9DFRclK0csGBHGODW4+6MH6gVxc2iMTG2XD/dQ5pnC6gxPCpRGKVQJsVv9FAHb7teF1cGFg5jzY4iOEPkuWsNUuAcXdVFi8e24AdzkcO+43D2bYTz1INh3YLQ/cbST7NQLztV5nWz9wX00JL+stFNOwTFej7pnSLuzZ58gZ+ZtbNkkpPGYf0kANu+WDjoMqvMjYEgxfKLqRVq92gioQVs9KCnH27qHBQLXbzUzym3h7mIrPWQ==}{name:QURQVG9rZW5FbmNyeXB0aW9uS2V5}{serial:Mg==}"
+
+    device_private_key = OpenSSL::RSA.new(<<-END_RSA_PRIVATE_KEY
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpQIBAAKCAQEA3QZKS0pRp43+sQ1bvgA79KJ78lygI9DKSxG2Awh/S7vXzB1c
+    IutSakbQcfSAN3gpfldWRfqfvmwk3hsec5u5OHr8tQwvR+BvxprxWsON1F54nPv0
+    IbTpZtBpKQl61NffYSJlKZWat24/lQjzu2YIo2qVgApJCVy8CxPcjFpw4t0umwRS
+    owbsyASi0sQ6fyLkTg0sEaTkroHrq7JeFpmt3/sQyG/gnDVLz7NDi1aRTUm9HnAc
+    p4PZzJMBzpl7Xq6RxXqy9lLjOt0AW9i+gHgIqCrvOUljG386HPx0LRUUx5MjWHZ0
+    STXc3tV1jAOhMl8JFvf/C2/vPoyRmDScTCPz7QIDAQABAoIBAACIaVlxHm1G/Fw0
+    6gm1Om/GjIHzEzfC4xn3Ovca6COomkaVs4kqBBLZhNshecWodoEleMHGbugonpYi
+    fppMv8+RDFbrZpnHwr051mcfnZHrgGLwgJAsPXvP+NDugutMce9sA85r2+mhTGnx
+    kZTcFB1AvoeGftKU9KcaLyfvd+I0ISiRtekfjGNacOw1tAyGIl7Yl1o8In6iQAnG
+    SjfmdYzpsz7jYtxn1VZdnoK1mcAPOHriqt7CCmU4Zp12mmwRx2f3+T7g2Ru7vl7x
+    wSGFmmPsLMO+oR962HcxfW3HT+OHvSGuth9fbuUUw91WCh7O7ODew0C4EbtwVn4W
+    NDuJT0ECgYEA+1LXB0Y9VWov6IS5edJurDrUGapLALlL41m3QLa0AYypKVTMTyLV
+    w4zjmvzj2UaJBohx80dECFXgYLsvwE7N8x4/sbU0UCQ4lbP5gGN2ypL7fDTyhJny
+    YU1/kV8CfdAtT6YXHcPwD4gPTbA83heaUFQsrogJbqI7UcJOEubTkFUCgYEA4SMf
+    jg/kTp1MLeiSb0sxJkjA2foBNvc+qk41dI9oLvaPN4LRV3t9HQBzgSNUz0K/1tG0
+    BqlOJuoQ3t2XSI3ubnRjKgAoUVYSbMgS9/6mpowrGGnG4ZHNvtLM4/160yvZabKg
+    dsoLChNGPmDK4iLLtdoPKneJarleUpczyqBijTkCgYEA8HuGEgnd6ntfOEi4CZ+Y
+    Eul/xscyWZD00qkoNp4chFcKDuh7T0Xv8dxAdi+B/ogF2eB52OXabXdu6mBzArrl
+    SrspC2xukDj4hBbgqT+DjbczONiZLtT4Hq8/X+Tfx2+Jy+sLt4mjjdkNe7MlqwY+
+    vJqu3pqBHAHUbRlWB7QjwLkCgYEAiPpXvpWIsRQfP2dbgP9cvhBR1c24Y3r206OV
+    /n8qQjidVobvW6y0qKqXnCCk/x17nvYj9FGaTS7oaNCltO01/lot42YJIcOenjT0
+    5ZI4TujFZ6sj6CZP6iRTqPuWeVkahKa73sp7APxNJrK5ffDxxIkR5SKppxd1fgak
+    6km+7HECgYEA3X+mXrSiqLO6Dnd8dlenoQmGPNoNYkkxAjFIzYsXgzrktdufwz9B
+    rKsXGe7JzjOIAg94Je9dnY5Ym/eG/VlgquCNqwOH/a8UcBr5wwpePYQ4B3y/RSku
+    kDSGu2zzRAanGaPh2B2cjzVYWr1D3btW1Fn+nyuGtO0Dcdvq9EEwESc=
+    -----END RSA PRIVATE KEY-----
+    END_RSA_PRIVATE_KEY
+    )
+
+    date = Time.new(2016, 2, 15, 10, 20, 30).to_rfc3339 # => 2016-02-15T16:20:30Z
+
+    it "signs GET request" do
+      body = IO::Memory.new("")
+
+      headers = sign_request("/0.0/library/books?purchaseAfterDate=01/01/1970", "GET", body, adp_token, device_private_key, date)
+      headers["x-adp-token"].should eq(adp_token)
+      headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
+      headers["x-adp-signature"].should eq("MLSyxJQdp8wr5XifjWU3gaQGWmhuma6WLUc5sSR4jkXoAaufPi5GmaXIK+rdSAQ7NF+PS4msOf11K2TdqrOaYmXSXGW4pFYzYaaPmTT+dYhZUQL/Fl4Kta9a6+Dg0b+dSVKMWswkHAOnjdb8gyXPc4hfpzoR96MlwP8Bqb9WyigQb4/r7G4FFrjeqepBCMb3elNvv1UlrwkY1TtLu1fKIAlDHW+TOkQweViapOJqjieM+H5UHnvcbPIzo0ePVyBeWVMPpsbgBNI7VR3Ecn9ClkXUvf+DziXfQb1D8e2udyQf3iT53KzU6ZxMRkbMzZy7MdNjpJr4r/OtmbRLwTJq+Q==:2016-02-15T16:20:30Z")
+    end
+
+    it "signs POST request" do
+      body = IO::Memory.new(%({"asin": "B002V02KPU"}))
+      headers = sign_request("/1.0/wishlist", "POST", body, adp_token, device_private_key, date)
+      headers["x-adp-token"].should eq(adp_token)
+      headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
+      headers["x-adp-signature"].should eq("YKyc3V3E3s96OHFY8WAxOTZtYMc5awjvFBDZRiY3jZbFGIq9YWrgocZ4Rxix8W1NrJk/L8rbeLqDlpeq8zUDopU/hfM8mfdAd308XV7qeekjxTLsz/52V5i6d3W4H/91cWqbQdko20iKpbAAW5BUBXJpb4pnt37BBZApiZ/rCyVdkO/XZFS8e0dW2fCgXlr/4B7rm6bBPXf6IK2nQffI4Qf0p5ByWoeFzHtIQDadi6KM6r7yzp5iTsOlxp/dCowKHtp7u+VxUoFIiMGdOqG8FLnPJsTftwy6XQenvyV+4HHOjbo+ue1pdAznxpQJvlE1cDnOGSIOt5jQUP7WZZemvg==:2016-02-15T16:20:30Z")
+    end
+
+    it "signs DELETE request" do
+      body = IO::Memory.new("")
+
+      headers = sign_request("/1.0/wishlist/B002V02KPU", "DELETE", body, adp_token, device_private_key, date)
+      headers["x-adp-token"].should eq(adp_token)
+      headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
+      headers["x-adp-signature"].should eq("tbM0YMdlpRY57Okw8KqgqfDbk/xYJKP6TFc90TWPbkh7TwTioRK+G6F/Lcai2BW6ddAxJAHfpW0+vlxLRSQ+RqAAYirS+D5hyu73Uo/h6CKnqm7cw2qneg0BOVjHdceoM6JMn0y0S4JKZ1CJAoNqYSdX/sJgXCwP+TK1JqUWKfa/5HoiICmm7QT0GqK9qfu0UTOCx7HOk6s6fbSA+6b/1GGhQjj10ez+s5OMe+RYOZ/SoxKla8vTvx1TABIa+ZVMvC07GOrLw8xhUeq/Kgm4Hq2IqGwH3raGQ2RHkHJxZ+k2UojcVkqCpC3hPFnTMVfQ67aj9JXtFvil8iD7lSgSOw==:2016-02-15T16:20:30Z")
+    end
+  end
 end

@@ -1,6 +1,6 @@
 # audible.cr
 
-WIP interface for internal Audible API.
+Interface for internal Audible API.
 
 ## Installation
 
