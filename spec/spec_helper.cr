@@ -1,2 +1,3 @@
 require "spec"
-require "../src/audible.cr"
+require "../src/audible/*"
+require "../src/audible"

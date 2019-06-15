@@ -1,14 +1,14 @@
 name: audible
-version: 0.1.0
+version: 0.2.0
 
 authors:
-  - Omar Roth <omarroth@hotmail.com>
+  - Omar Roth <omarroth@protonmail.com>
 
 dependencies:
   openssl_ext:
     github: randomstate/openssl_ext
     branch: master
 
-crystal: 0.27.2
+crystal: 0.29.0
 
-license: MIT
+license: AGPLv3
