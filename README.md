@@ -107,15 +107,15 @@ Responses will often provide very little info without `response_groups` specifie
 
 - num_results: \\d+ (max: 1000)
 - page: \\d+
-- response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
-- sort_by: [Length, Narrator, Author, -Title, PurchaseDate, -Length, -Narrator, -Author, Title, -PurchaseDate]
+- response_groups: [badge_types, category_ladders, claim_code_url, contributors, is_downloaded, is_finished, is_returnable, media, origin_asin, pdf_url, percent_complete, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, provided_review, rating, relationships, review_attrs, reviews, sample, series, sku]
+- sort_by: [-Author, -Length, -Narrator, -PurchaseDate, -Title, Author, Length, Narrator, PurchaseDate, Title]
 
 ### GET /1.0/wishlist
 
 - num_results: \\d+ (max: 50)
 - page: \\d+
 - response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
-- sort_by: [-DateAdded, Price, -Rating, Author, -Title, DateAdded, -Author, Title, -Price, Rating]
+- sort_by: [-Author, -DateAdded, -Price, -Rating, -Title, Author, DateAdded, Price, Rating, Title]
 
 ### POST /1.0/wishlist
 
