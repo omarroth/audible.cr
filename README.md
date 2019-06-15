@@ -19,29 +19,40 @@ dependencies:
 ```crystal
 require "audible"
 
-login_object = Audible.login("EMAIL", "PASSWORD")
-auth_register = Audible.auth_register(login_object)
-
-tokens = auth_register["response"]["success"]["tokens"]
-device_private_key = OpenSSL::RSA.new(tokens["mac_dms"]["device_private_key"].as_s)
-adp_token = tokens["mac_dms"]["adp_token"].as_s
-access_token = tokens["bearer"]["access_token"].as_s
-refresh_token = tokens["bearer"]["refresh_token"].as_s
-
-client = HTTP::Client.new(Audible::AUDIBLE_API)
-
-request = sign_request(HTTP::Request.new("GET", "/0.0/library/books?purchaseAfterDate=01/01/1970"), adp_token, device_private_key)
-puts client.exec(request).body # => <books><total_book_count>35</total_book_count><book><title>The Master and...
+client = Audible::Client.new("EMAIL", "PASSWORD")
+puts client.get("/1.0/library").body # => {"items":[{"asin":"B002V0QUOC"...
 ```
 
-Clients should remember `access_token`, `refresh_token`, `adp_token`, `device_private_key` when possible.
+Sessions can be saved using `to_json` and `from_json`, like so:
 
-Logging in currently requires answering a CAPTCHA. There will be a prompt for the above example that looks like this:
+```crystal
+require "audible"
+
+client = Audible::Client.new("EMAIL", "PASSWORD")
+File.write("session.json", client.to_json)
+
+# Sometime later...
+client = Audible::Client.from_json(File.read("session.json"))
 
 ```
-$ crystal src/audible.cr
+
+Logging in currently requires answering a CAPTCHA. By default a user prompt will be provided using `readline`, which looks like:
+
+```
 https://opfcaptcha-prod.s3.amazonaws.com/...
 Answer for CAPTCHA:
+```
+
+A custom callback can be provided (for example submitting the CAPTCHA to an external service), like so:
+
+```crystal
+require "audible"
+
+client = Audible::Client.new("EMAIL", "PASSWORD") do |captcha_url|
+  # Do some things with the captcha_url ...
+
+  return "My answer for CAPTCHA"
+end
 ```
 
 ## Authentication
@@ -58,13 +69,11 @@ x-adp-signature: AAAAAAAA...:2019-02-16T00:00:01.000000000Z,
 x-adp-token: {enc:...}
 ```
 
-It also appears to be possible to authenticate using:
+The `Audible::Client` will refresh the `access_token` and other necessary keys when necessary.
 
-```
-Authentication: Bearer access_token
-```
+As reference for other implementations, a client **must** store cookies from a successful Amazon login and a working `access_token` in order to renew `refresh_token`, `adp_token`, etc from `/auth/register`.
 
-And a given client ID, although this has not been tested.
+An `access_token` can be renewed by making a request to `/auth/token`. `access_token`s are valid for 1 hour.
 
 ## Documentation:
 
@@ -78,19 +87,28 @@ Luckily the Audible API is partially self-documenting, however the parameter nam
 }
 ```
 
-Very few endpoints have been fully documented, as a large amount of functionality is not testable from the app or functionality is unknown. Most calls need to be authenticated in the same way as in [usage](#Usage).
+Few endpoints have been fully documented, as a large amount of functionality is not testable from the app or functionality is unknown. Most calls need to be authenticated.
 
 For `%s` substitutions the value is unknown or can be inferred from the endpoint. `/1.0/catalog/products/%s` for example requires an `asin`, as in `/1.0/catalog/products/B002V02KPU`.
 
 Each bullet below refers to a parameter for the request with the specified method and URL.
 
-Responses will often provide very little info without `response_groups` specified. Multiple response groups can be specified, for example: `/1.0/catalog/products/B002V02KPU?response_groups=product_plan_details,media,review_attrs`. When providing an invalid response group, the server will return an error response but will not provide any information on available response groups.
+Responses will often provide very little info without `response_groups` specified. Multiple response groups can be specified, for example: `/1.0/catalog/products/B002V02KPU?response_groups=product_plan_details,media,review_attrs`. When providing an invalid response group, the server will return an error response but will not provide information on available response groups.
 
 ### GET /0.0/library/books
+
+#### Deprecated: Use `/1.0/library`
 
 - purchaseAfterDate: mm/dd/yyyy
 - sortByColumn: [SHORT_TITLE, strTitle, DOWNLOAD_STATUS, RUNNING_TIME, sortPublishDate, SHORT_AUTHOR, sortPurchDate, DATE_AVAILABLE]
 - sortInAscendingOrder: [true, false]
+
+### GET /1.0/library
+
+- num_results: \\d+ (max: 1000)
+- page: \\d+
+- response_groups: [contributors, media, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, rating, sample, sku]
+- sort_by: [Length, Narrator, Author, -Title, PurchaseDate, -Length, -Narrator, -Author, Title, -PurchaseDate]
 
 ### GET /1.0/wishlist
 
@@ -165,15 +183,20 @@ Returns 204 and removes the item from the wishlist using the given `asin`.
 
 - B consumption_type: [Streaming, Offline, Download]
 - B drm_type: [Hls, PlayReady, Hds, Adrm]
+- B quality: [High, Normal, Extreme, Low]
+- B num_active_offline_licenses: \\d+ (max: 10)
 
 Example request body:
 
 ```json
 {
-  "drm_type": "Hls",
-  "consumption_type": "Download"
+  "drm_type": "Adrm",
+  "consumption_type": "Download",
+  "quality": "Extreme"
 }
 ```
+
+For a succesful request, returns JSON body with `content_url`.
 
 ### GET /1.0/annotations/lastpositions
 
@@ -309,49 +332,23 @@ Example request body:
 
 ### POST(?) /1.0/library/item/%s/%s
 
-## Downloading Books
-
-Quite ugly, but the following will allow you to download the .aax for a given `asin`, provided the book is in your library:
+## Downloading
 
 ```crystal
 require "audible"
 
-asin = "B002V5H6F4"
+client = Audible::Client.new("EMAIL", "PASSWORD")
 
-client = HTTP::Client.new(URI.parse("https://cde-ta-g7g.amazon.com"))
-request = sign_request(
-  HTTP::Request.new("GET", "/FionaCDEServiceEngine/FSDownloadContent?type=AUDI&currentTransportMethod=WIFI&key=#{asin}"),
-  adp_token,
-  device_private_key
-)
-response = client.exec(request)
+# Request .aax file in given quality
+body = {
+  consumption_type: "Download",
+  drm_type:         "Adrm",
+  quality:          "Extreme",
+}.to_json
 
-client = HTTP::Client.new(URI.parse("https://cds.audible.com"))
-request = sign_request(
-  HTTP::Request.new("GET", response.headers["Location"]),
-  adp_token,
-  device_private_key
-)
+content_url = JSON.parse(client.post("/1.0/content/B002V0QUOC/licenserequest", body: body).body)["content_license"]["content_metadata"]["content_url"]["offline_url"].as_s # => https://dyrrggeck87jc.cloudfr...
 
-client.exec(request) do |response|
-  filename = response.headers["Content-Disposition"].split("filename=")[1]
-  content_length = response.headers["Content-Length"]
-  file = File.open(filename, mode: "w")
-
-  bytes_written = 0
-  size = 1
-
-  while size > 0
-    size = IO.copy(response.body_io, file, 4096)
-    bytes_written += size
-
-    percentage = ((bytes_written.to_f / content_length.to_f) * 100).round(2)
-    print "#{percentage}%\r"
-    file.flush
-  end
-end
-
-puts "100%   "
+# `content_url` can then be downloaded using any tool
 
 ```
 
