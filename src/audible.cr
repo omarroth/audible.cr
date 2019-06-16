@@ -335,8 +335,7 @@ module Audible
       headers["Accept-Language"] = "en_US"
       headers["Authorization"] = "Bearer #{@access_token}"
 
-      client = HTTP::Client.new(AMAZON_API)
-      return JSON.parse(client.get("/user/profile", headers).body)
+      return JSON.parse(get("/user/profile", headers).body)
     end
 
     def refresh_or_register
@@ -362,6 +361,9 @@ module Audible
       end
 
       request = sign_request(new_request method, path, headers, body)
+      # request.headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 12_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      # request.headers["Accept"] = "application/json"
+      # request.headers["Content-Type"] = "application/json"
 
       client = HTTP::Client.new(AUDIBLE_API)
       client.exec request
