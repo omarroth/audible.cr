@@ -107,8 +107,19 @@ Responses will often provide very little info without `response_groups` specifie
 
 - num_results: \\d+ (max: 1000)
 - page: \\d+
-- response_groups: [badge_types, category_ladders, claim_code_url, contributors, is_downloaded, is_finished, is_returnable, media, origin_asin, pdf_url, percent_complete, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, provided_review, rating, relationships, review_attrs, reviews, sample, series, sku]
+- purchased_after: [RFC3339](https://tools.ietf.org/html/rfc3339) (e.g. `2000-01-01T00:00:00Z`)
+- response_groups: [badge_types, category_ladders, claim_code_url, contributors, is_downloaded, is_returnable, media, origin_asin, pdf_url, percent_complete, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, provided_review, rating, relationships, review_attrs, reviews, sample, series, sku]
 - sort_by: [-Author, -Length, -Narrator, -PurchaseDate, -Title, Author, Length, Narrator, PurchaseDate, Title]
+
+### GET /1.0/library/%{asin}
+
+- response_groups: [badge_types, category_ladders, claim_code_url, contributors, is_downloaded, is_returnable, media, origin_asin, pdf_url, percent_complete, price, product_attrs, product_desc, product_extended_attrs, product_plan_details, product_plans, provided_review, rating, relationships, review_attrs, reviews, sample, series, sku]
+
+### POST(?) /1.0/library/item
+
+- asin:
+
+### POST(?) /1.0/library/item/%s/%s
 
 ### GET /1.0/wishlist
 
@@ -240,9 +251,19 @@ For a succesful request, returns JSON body with `content_url`.
 - continuation_token:
 - image_sizes:
 
+### GET /1.0/stats/aggregates
+
+- daily_listening_interval_duration: ([012]?[0-9])|(30) (0 to 30, inclusive)
+- daily_listening_interval_start_date: YYYY-MM-DD (e.g. `2019-06-16`)
+- locale: en_US
+- monthly_listening_interval_duration: 0?[0-9]|1[012] (0 to 12, inclusive)
+- monthly_listening_interval_start_date: YYYY-MM (e.g. `2019-02`)
+- response_groups: [total_listening_stats]
+- store: [AudibleForInstitutions, Audible, AmazonEnglish, Rodizio]
+
 ### GET /1.0/stats/status/finished
 
-- asin:
+- asin: asin
 
 ### POST(?) /1.0/stats/status/finished
 
@@ -326,13 +347,9 @@ For a succesful request, returns JSON body with `content_url`.
 - reviews_sort_by: [MostHelpful, MostRecent]
 - similarity_type: [InTheSameSeries, ByTheSameNarrator, RawSimilarities, ByTheSameAuthor, NextInSameSeries]
 
-### POST(?) /1.0/library/item
-
-- asin:
-
-### POST(?) /1.0/library/item/%s/%s
-
 ## Downloading
+
+For multipart books, it's necessary to use the `child_asin` provided with `response_groups=relationships` in order to download each part.
 
 ```crystal
 require "audible"

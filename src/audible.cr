@@ -63,7 +63,7 @@ module Audible
       body["adp_token"] = @adp_token
       body["access_token"] = @access_token
       body["refresh_token"] = @refresh_token
-      body["device_private_key"] = @device_private_key.to_der
+      body["device_private_key"] = @device_private_key.to_der.delete("\n")
       body["expires"] = @expires.to_unix
 
       body.to_json
@@ -120,7 +120,7 @@ module Audible
       headers["Accept-Language"] = "en-US"
       headers["Host"] = "www.amazon.com"
       headers["Origin"] = "https://www.amazon.com"
-      headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Mobile/14E304"
+      headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 12_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
 
       oauth_url = "/ap/signin?openid.oa2.response_type=token&openid.return_to=https://www.amazon.com/ap/maplanding&openid.assoc_handle=amzn_audible_ios_us&openid.identity=http://specs.openid.net/auth/2.0/identifier_select&pageId=amzn_audible_ios&accountStatusPolicy=P1&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select&openid.mode=checkid_setup&openid.ns.oa2=http://www.amazon.com/ap/ext/oauth/2&openid.oa2.client_id=device:6a52316c62706d53427a5735505a76477a45375959566674327959465a6374424a53497069546d45234132435a4a5a474c4b324a4a564d&language=en_US&openid.ns.pape=http://specs.openid.net/extensions/pape/1.0&marketPlaceId=AF2M0KC94RCEA&openid.oa2.scope=device_auth_access&forceMobileLayout=true&openid.ns=http://specs.openid.net/auth/2.0&openid.pape.max_auth_age=0"
 
@@ -207,6 +207,7 @@ module Audible
     def auth_register
       body = JSON.build do |json|
         json.object do
+          json.field "requested_extensions", ["device_info", "customer_info"]
           json.field "requested_token_type", ["bearer", "mac_dms", "website_cookies"]
 
           json.field "cookies" do
@@ -229,7 +230,7 @@ module Audible
           json.field "registration_data" do
             json.object do
               json.field "domain", "Device"
-              json.field "app_version", "3.1.2"
+              json.field "app_version", "3.7"
               json.field "device_serial", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
               json.field "device_type", "A2CZJZGLK2JJVM"
               json.field "device_name", "%FIRST_NAME%%FIRST_NAME_POSSESSIVE_STRING%%DUPE_STRATEGY_1ST%Audible for iPhone"
@@ -244,8 +245,6 @@ module Audible
               json.field "access_token", @access_token
             end
           end
-
-          json.field "requested_extensions", ["device_info", "customer_info"]
         end
       end
 
@@ -256,7 +255,7 @@ module Audible
       headers["Accept-Charset"] = "utf-8"
       headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
       headers["Accept"] = "application/json"
-      headers["User-Agent"] = "AmazonWebView/Audible/3.1.2/iOS/10.3.1/iPhone"
+      headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
       headers["Accept-Language"] = "en_US"
       headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
 
@@ -291,7 +290,7 @@ module Audible
       headers["Accept-Charset"] = "utf-8"
       headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
       headers["Accept"] = "application/json"
-      headers["User-Agent"] = "AmazonWebView/Audible/3.1.2/iOS/10.3.1/iPhone"
+      headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
       headers["Accept-Language"] = "en_US"
       headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
       headers["Authorization"] = "Bearer #{@access_token}"
@@ -311,7 +310,7 @@ module Audible
 
       body = {
         "app_name"             => "Audible",
-        "app_version"          => "3.1.2",
+        "app_version"          => "3.7",
         "source_token"         => @refresh_token,
         "requested_token_type" => "access_token",
         "source_token_type"    => "refresh_token",
@@ -326,9 +325,18 @@ module Audible
       @expires = Time.now + body["expires_in"].as_i.seconds
     end
 
-    def user_profile
+    def user_profile : JSON::Any
       client = HTTP::Client.new(AMAZON_API)
-      return JSON.parse(client.get("/user/profile?access_token=#{@access_token}").body)
+      headers = HTTP::Headers.new
+      headers["Host"] = "api.amazon.com"
+      headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
+      headers["Accept-Charset"] = "utf-8"
+      headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
+      headers["Accept-Language"] = "en_US"
+      headers["Authorization"] = "Bearer #{@access_token}"
+
+      client = HTTP::Client.new(AMAZON_API)
+      return JSON.parse(client.get("/user/profile", headers).body)
     end
 
     def refresh_or_register

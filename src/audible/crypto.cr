@@ -102,7 +102,7 @@ module Audible
     end
 
     def self.decrypt_metadata(metadata)
-      metadata = metadata.lchop("ECdITeCs:")
+      metadata = URI.unescape(metadata).lchop("ECdITeCs:")
       final_round = Base64.decode(metadata)
 
       temp2 = [] of UInt32
