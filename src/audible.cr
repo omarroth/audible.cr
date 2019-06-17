@@ -234,7 +234,7 @@ module Audible
               json.field "device_serial", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
               json.field "device_type", "A2CZJZGLK2JJVM"
               json.field "device_name", "%FIRST_NAME%%FIRST_NAME_POSSESSIVE_STRING%%DUPE_STRATEGY_1ST%Audible for iPhone"
-              json.field "os_version", "10.3.1"
+              json.field "os_version", "12.3.1"
               json.field "device_model", "iPhone"
               json.field "app_name", "Audible"
             end
@@ -245,6 +245,29 @@ module Audible
               json.field "access_token", @access_token
             end
           end
+
+          # json.field "auth_data" do
+          #   json.object do
+          #     json.field "user_id_password" do
+          #       json.object do
+          #         json.field "user_id", ?
+          #         json.field "password", ?
+          #       end
+          #     end
+          #   end
+          # end
+          #
+          # json.field "auth_data" do
+          #   json.object do
+          #     json.field "auth_token" do
+          #       json.object do
+          #         json.field "atmain", @login_cookies["at-main"]
+          #         json.field "client_context", ?
+          #         json.field "max_age", 1209600
+          #       end
+          #     end
+          #   end
+          # end
         end
       end
 
@@ -298,16 +321,16 @@ module Audible
       response = client.post("/auth/deregister", headers, body: body)
       body = JSON.parse(response.body)
 
-      if response.status_code == 200
-        @adp_token = ""
-        @refresh_token = ""
-        @expires = Time.now
+      if response.status_code != 200
+        raise body["response"]["error"]["message"].as_s
       end
+
+      @adp_token = ""
+      @refresh_token = ""
+      @expires = Time.now
     end
 
     def refresh_access_token
-      client = HTTP::Client.new(AMAZON_API)
-
       body = {
         "app_name"             => "Audible",
         "app_version"          => "3.7",
@@ -316,11 +339,18 @@ module Audible
         "source_token_type"    => "refresh_token",
       }
 
+      client = HTTP::Client.new(AMAZON_API)
       headers = HTTP::Headers.new
       headers["Content-Type"] = "application/x-www-form-urlencoded"
       headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
 
-      body = JSON.parse(client.post("/auth/token", headers, form: body).body)
+      response = client.post("/auth/token", headers, form: body)
+      body = JSON.parse(response.body)
+
+      if response.status_code != 200
+        raise body["error_description"].as_s
+      end
+
       @access_token = body["access_token"].as_s
       @expires = Time.now + body["expires_in"].as_i.seconds
     end
