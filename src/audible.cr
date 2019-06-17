@@ -294,9 +294,14 @@ module Audible
 
       @adp_token = tokens["mac_dms"]["adp_token"].as_s
       @device_private_key = OpenSSL::RSA.new(tokens["mac_dms"]["device_private_key"].as_s)
+
       @access_token = tokens["bearer"]["access_token"].as_s
       @refresh_token = tokens["bearer"]["refresh_token"].as_s
       @expires = Time.now + tokens["bearer"]["expires_in"].as_s.to_i.seconds
+
+      tokens["website_cookies"].as_a.each do |cookie|
+        @login_cookies[cookie["Name"].as_s] = cookie["Value"].as_s
+      end
     end
 
     def auth_deregister
