@@ -63,7 +63,7 @@ module Audible
       body["adp_token"] = @adp_token
       body["access_token"] = @access_token
       body["refresh_token"] = @refresh_token
-      body["device_private_key"] = @device_private_key.to_der.delete("\n")
+      body["device_private_key"] = "-----BEGIN RSA PRIVATE KEY-----\n#{@device_private_key.to_der}-----END RSA PRIVATE KEY-----\n"
       body["expires"] = @expires.to_unix
 
       body.to_json
@@ -246,6 +246,7 @@ module Audible
             end
           end
 
+          # Sends One-Time password
           # json.field "auth_data" do
           #   json.object do
           #     json.field "user_id_password" do
