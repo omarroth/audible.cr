@@ -2,6 +2,10 @@
 
 Interface for internal Audible API.
 
+## Other Implementations
+
+- [Audible](https://github.com/mkb79/Audible) (Python)
+
 ## Installation
 
 1. Add the dependency to your `shard.yml`:
