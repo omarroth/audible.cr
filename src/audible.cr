@@ -73,7 +73,16 @@ module Audible
       JSON.parse(to_json).to_pretty_json(indent)
     end
 
-    # Normally you don't want to do this. Shoudld be used if you want to persist a session
+    def default_captcha_callback(captcha_image)
+      puts captcha_image
+      Readline.readline("Answer for CAPTCHA: ").not_nil!.strip.downcase
+    end
+
+    def default_otp_callback
+      Readline.readline("OTP Code          : ").not_nil!.strip.downcase
+    end
+
+    # Normally you don't want to call this directly. Shoudld be used if you want to persist a session
     # between different runs
     def initialize
       @login_cookies = {} of String => String
@@ -92,15 +101,25 @@ module Audible
       @device_private_key = OpenSSL::RSA.new(2048)
       @expires = Time.utc(1990, 1, 1)
 
-      # Basic callback for use in e.g. CLIs
-      initialize(email, password) do |captcha_image|
-        puts captcha_image
-        Readline.readline("Answer for CAPTCHA: ").not_nil!.strip.downcase
+      # Basic callbacks for use in e.g. CLIs
+      captcha_callback = ->default_captcha_callback(String)
+      otp_callback = ->default_otp_callback
+
+      initialize(email, password, otp_callback, captcha_callback)
+    end
+
+    def initialize(email, password, otp_callback = nil, &captcha_callback)
+      if !otp_callback
+        otp_callback = ->default_captcha_callback
+      end
+
+      initialize(email, password, otp_callback) do |captcha_image|
+        captcha_callback.call(captcha_image)
       end
     end
 
     # Provides callback for better handling captcha (for example submitting to another service), in form 'captcha_url' returning 'guess'.
-    def initialize(email, password, &captcha_callback : String -> String)
+    def initialize(email, password, otp_callback : -> String, captcha_callback : String -> String)
       # We just need to declare these as stubs so they're not nilable. `auth_register` will
       # fill them in for us.
       @login_cookies = {} of String => String
@@ -187,6 +206,37 @@ module Audible
 
       response = client.post(signin_url, headers, body: body)
       headers = add_request_headers(response, headers)
+
+      # Handle OTP
+      if response.status_code == 302 && response.headers["Location"].includes? "/ap/mfa"
+        referer = response.headers["Location"]
+        response = client.get(response.headers["Location"], headers)
+
+        inputs = {} of String => String
+
+        body = XML.parse_html(response.body)
+        body.xpath_nodes(%q(.//input[@type="hidden"])).each do |node|
+          if node["name"]? && node["value"]?
+            inputs[node["name"]] = node["value"]
+          end
+        end
+
+        signin_url = "/ap/signin"
+
+        inputs["otpCode"] = otp_callback.call
+        inputs["mfaSubmit"] = "Submit"
+
+        raw_params = {} of String => Array(String)
+        inputs.each { |key, value| raw_params[key] = [value] }
+
+        body = HTTP::Params.new(raw_params).to_s
+
+        headers["Referer"] = referer
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+        response = client.post(signin_url, headers, body: body)
+        headers = add_request_headers(response, headers)
+      end
 
       if response.status_code == 302
         map_landing = HTTP::Params.parse(URI.parse(response.headers["Location"]).query.not_nil!)
