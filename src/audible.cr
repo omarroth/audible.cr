@@ -79,7 +79,7 @@ module Audible
     end
 
     def default_otp_callback
-      Readline.readline("OTP Code          : ").not_nil!.strip.downcase
+      Readline.readline("OTP Code: ").not_nil!.strip.downcase
     end
 
     # Normally you don't want to call this directly. Shoudld be used if you want to persist a session
@@ -118,8 +118,18 @@ module Audible
       end
     end
 
+    def initialize(email, password, otp_callback = nil, &captcha_callback)
+      if !otp_callback
+        otp_callback = ->default_otp_callback
+      end
+
+      initialize(email, password, otp_callback) do |captcha_image|
+        captcha_callback.call(captcha_image)
+      end
+    end
+
     # Provides callback for better handling captcha (for example submitting to another service), in form 'captcha_url' returning 'guess'.
-    def initialize(email, password, otp_callback : -> String, captcha_callback : String -> String)
+    def initialize(email, password, otp_callback : -> String = default_otp_callback, captcha_callback : String -> String = ->default_captcha_callback(String))
       # We just need to declare these as stubs so they're not nilable. `auth_register` will
       # fill them in for us.
       @login_cookies = {} of String => String

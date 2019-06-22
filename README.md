@@ -59,6 +59,28 @@ client = Audible::Client.new("EMAIL", "PASSWORD") do |captcha_url|
 end
 ```
 
+If 2FA is enabled for the given account a prompt will be provided using `readline`, which looks like:
+
+```
+OTP Code:
+```
+
+A custom callback can be provided like so:
+
+```crystal
+def custom_otp_callback
+  # Do some things to get OTP code...
+
+  return "My OTP code"
+end
+
+client = Audible::Client.new("USERNAME", "PASSWORD", otp_callback: ->custom_otp_callback)
+
+# Or directly as proc:
+
+client = Audible::Client.new("USERNAME", "PASSWORD", otp_callback: ->{ return "My OTP code"})
+```
+
 ## Authentication
 
 Clients are authenticated using OpenID. Once a client has successfully authenticated with Amazon, they are given an access token and refresh token for authenticating with Audible.
