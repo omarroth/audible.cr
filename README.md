@@ -23,7 +23,7 @@ dependencies:
 ```crystal
 require "audible"
 
-client = Audible::Client.new("EMAIL", "PASSWORD")
+client = Audible::Client.new("EMAIL", "PASSWORD", locale: "us")
 puts client.get("/1.0/library").body # => {"items":[{"asin":"B002V0QUOC"...
 ```
 
