@@ -22,10 +22,6 @@ require "xml"
 require "./audible/*"
 
 module Audible
-  AMAZON_LOGIN = URI.parse("https://www.amazon.com")
-  AMAZON_API   = URI.parse("https://api.amazon.com")
-  AUDIBLE_API  = URI.parse("https://api.audible.com")
-
   class Client
     property login_cookies : Hash(String, String)
     property adp_token : String
@@ -33,6 +29,7 @@ module Audible
     property refresh_token : String
     property device_private_key : OpenSSL::RSA
     property expires : Time
+    property locale : String
 
     def self.from_json(body : String)
       from_json(JSON.parse(body))
@@ -51,6 +48,7 @@ module Audible
       client.refresh_token = body["refresh_token"].as_s
       client.device_private_key = OpenSSL::RSA.new(body["device_private_key"].as_s)
       client.expires = Time.unix(body["expires"].as_i)
+      client.locale = body["locale"].as_s? || "us"
 
       client
     end
@@ -65,6 +63,7 @@ module Audible
       body["refresh_token"] = @refresh_token
       body["device_private_key"] = "-----BEGIN RSA PRIVATE KEY-----\n#{@device_private_key.to_der}-----END RSA PRIVATE KEY-----\n"
       body["expires"] = @expires.to_unix
+      body["locale"] = @locale
 
       body.to_json
     end
@@ -73,8 +72,8 @@ module Audible
       JSON.parse(to_json).to_pretty_json(indent)
     end
 
-    def default_captcha_callback(captcha_image)
-      puts captcha_image
+    def default_captcha_callback(captcha_url)
+      puts captcha_url
       Readline.readline("Answer for CAPTCHA: ").not_nil!.strip.downcase
     end
 
@@ -91,67 +90,62 @@ module Audible
       @refresh_token = ""
       @device_private_key = OpenSSL::RSA.new(2048)
       @expires = Time.utc(1990, 1, 1)
+      @locale = "us"
     end
 
-    def initialize(email, password)
-      @login_cookies = {} of String => String
-      @adp_token = ""
-      @access_token = ""
-      @refresh_token = ""
-      @device_private_key = OpenSSL::RSA.new(2048)
-      @expires = Time.utc(1990, 1, 1)
-
-      # Basic callbacks for use in e.g. CLIs
-      captcha_callback = ->default_captcha_callback(String)
-      otp_callback = ->default_otp_callback
-
-      initialize(email, password, otp_callback, captcha_callback)
+    def initialize(email, password, locale = "us", &otp_callback : -> String)
+      initialize(email, password, locale, otp_callback, ->default_captcha_callback)
     end
 
-    def initialize(email, password, otp_callback = nil, &captcha_callback)
-      if !otp_callback
-        otp_callback = ->default_captcha_callback
-      end
-
-      initialize(email, password, otp_callback) do |captcha_image|
-        captcha_callback.call(captcha_image)
-      end
-    end
-
-    def initialize(email, password, otp_callback = nil, &captcha_callback)
-      if !otp_callback
-        otp_callback = ->default_otp_callback
-      end
-
-      initialize(email, password, otp_callback) do |captcha_image|
-        captcha_callback.call(captcha_image)
-      end
+    def initialize(email, password, locale = "us", &captcha_callback : String -> String)
+      initialize(email, password, locale, ->default_otp_callback, captcha_callback)
     end
 
     # Provides callback for better handling captcha (for example submitting to another service), in form 'captcha_url' returning 'guess'.
-    def initialize(email, password, otp_callback : -> String = default_otp_callback, captcha_callback : String -> String = ->default_captcha_callback(String))
+    def initialize(email, password, locale : String = "us", otp_callback : -> String = ->default_otp_callback, captcha_callback : String -> String = ->default_captcha_callback(String))
       # We just need to declare these as stubs so they're not nilable. `auth_register` will
       # fill them in for us.
+
       @login_cookies = {} of String => String
       @adp_token = ""
       @access_token = ""
       @refresh_token = ""
       @device_private_key = OpenSSL::RSA.new(2048)
       @expires = Time.utc(1990, 1, 1)
+      @locale = locale
 
-      client = HTTP::Client.new(AMAZON_LOGIN)
+      client = HTTP::Client.new(LOCALES[@locale]["AMAZON_LOGIN"])
       client.connect_timeout = 30.seconds
       client.read_timeout = 30.seconds
       headers = HTTP::Headers.new
 
       headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       headers["Accept-Charset"] = "utf-8"
-      headers["Accept-Language"] = "en-US"
-      headers["Host"] = "www.amazon.com"
-      headers["Origin"] = "https://www.amazon.com"
+      headers["Accept-Language"] = LOCALES[@locale]["Accept-Language"]
+      headers["Host"] = LOCALES[@locale]["AMAZON_LOGIN"].host.not_nil!
+      headers["Origin"] = LOCALES[@locale]["AMAZON_LOGIN"].to_s
       headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 12_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
 
-      oauth_url = "/ap/signin?openid.oa2.response_type=token&openid.return_to=https://www.amazon.com/ap/maplanding&openid.assoc_handle=amzn_audible_ios_us&openid.identity=http://specs.openid.net/auth/2.0/identifier_select&pageId=amzn_audible_ios&accountStatusPolicy=P1&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select&openid.mode=checkid_setup&openid.ns.oa2=http://www.amazon.com/ap/ext/oauth/2&openid.oa2.client_id=device:6a52316c62706d53427a5735505a76477a45375959566674327959465a6374424a53497069546d45234132435a4a5a474c4b324a4a564d&language=en_US&openid.ns.pape=http://specs.openid.net/extensions/pape/1.0&marketPlaceId=AF2M0KC94RCEA&openid.oa2.scope=device_auth_access&forceMobileLayout=true&openid.ns=http://specs.openid.net/auth/2.0&openid.pape.max_auth_age=0"
+      oauth_params = HTTP::Params{
+        "openid.oa2.response_type" => "token",
+        "openid.return_to"         => "#{LOCALES[@locale]["AMAZON_LOGIN"]}/ap/maplanding",
+        "openid.assoc_handle"      => LOCALES[@locale]["openid_assoc_handle"],
+        "openid.identity"          => "http://specs.openid.net/auth/2.0/identifier_select",
+        "pageId"                   => LOCALES[@locale]["openid_assoc_handle"],
+        "accountStatusPolicy"      => "P1",
+        "openid.claimed_id"        => "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.mode"              => "checkid_setup",
+        "openid.ns.oa2"            => "http://www.amazon.com/ap/ext/oauth/2",
+        "openid.oa2.client_id"     => "device:6a52316c62706d53427a5735505a76477a45375959566674327959465a6374424a53497069546d45234132435a4a5a474c4b324a4a564d",
+        "language"                 => LOCALES[@locale]["oauth_lang"],
+        "openid.ns.pape"           => "http://specs.openid.net/extensions/pape/1.0",
+        "marketPlaceId"            => LOCALES[@locale]["marketPlaceId"],
+        "openid.oa2.scope"         => "device_auth_access",
+        "forceMobileLayout"        => "true",
+        "openid.ns"                => "http://specs.openid.net/auth/2.0",
+        "openid.pape.max_auth_age" => "0",
+      }
+      oauth_url = "/ap/signin?#{oauth_params.to_s}"
 
       until headers["Cookie"]?.try &.includes? "session-token"
         response = client.get("/", headers)
@@ -173,14 +167,14 @@ module Audible
 
       inputs["email"] = email
       inputs["password"] = password
-      inputs["metadata1"] = Audible::Crypto.encrypt_metadata(%({"start":#{Time.now.to_unix_ms},"interaction":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[]},"version":"3.0.0","lsUbid":"X39-6721012-8795219:1549849158","timeZone":-6,"scripts":{"dynamicUrls":["https://images-na.ssl-images-amazon.com/images/I/61HHaoAEflL._RC|11-BZEJ8lnL.js,01qkmZhGmAL.js,71qOHv6nKaL.js_.js?AUIClients/AudibleiOSMobileWhiteAuthSkin#mobile","https://images-na.ssl-images-amazon.com/images/I/21T7I7qVEeL._RC|21T1XtqIBZL.js,21WEJWRAQlL.js,31DwnWh8lFL.js,21VKEfzET-L.js,01fHQhWQYWL.js,51TfwrUQAQL.js_.js?AUIClients/AuthenticationPortalAssets#mobile","https://images-na.ssl-images-amazon.com/images/I/0173Lf6yxEL.js?AUIClients/AuthenticationPortalInlineAssets","https://images-na.ssl-images-amazon.com/images/I/211S6hvLW6L.js?AUIClients/CVFAssets","https://images-na.ssl-images-amazon.com/images/G/01/x-locale/common/login/fwcim._CB454428048_.js"],"inlineHashes":[-1746719145,1334687281,-314038750,1184642547,-137736901,318224283,585973559,1103694443,11288800,-1611905557,1800521327,-1171760960,-898892073],"elapsed":52,"dynamicUrlCount":5,"inlineHashesCount":13},"plugins":"unknown||320-568-548-32-*-*-*","dupedPlugins":"unknown||320-568-548-32-*-*-*","screenInfo":"320-568-548-32-*-*-*","capabilities":{"js":{"audio":true,"geolocation":true,"localStorage":"supported","touch":true,"video":true,"webWorker":true},"css":{"textShadow":true,"textStroke":true,"boxShadow":true,"borderRadius":true,"borderImage":true,"opacity":true,"transform":true,"transition":true},"elapsed":1},"referrer":"","userAgent":"#{headers["User-Agent"]}","location":"https://www.amazon.com#{oauth_url}","webDriver":null,"history":{"length":1},"gpu":{"vendor":"Apple Inc.","model":"Apple A9 GPU","extensions":[]},"math":{"tan":"-1.4214488238747243","sin":"0.8178819121159085","cos":"-0.5753861119575491"},"performance":{"timing":{"navigationStart":#{Time.now.to_unix_ms},"unloadEventStart":0,"unloadEventEnd":0,"redirectStart":0,"redirectEnd":0,"fetchStart":#{Time.now.to_unix_ms},"domainLookupStart":#{Time.now.to_unix_ms},"domainLookupEnd":#{Time.now.to_unix_ms},"connectStart":#{Time.now.to_unix_ms},"connectEnd":#{Time.now.to_unix_ms},"secureConnectionStart":#{Time.now.to_unix_ms},"requestStart":#{Time.now.to_unix_ms},"responseStart":#{Time.now.to_unix_ms},"responseEnd":#{Time.now.to_unix_ms},"domLoading":#{Time.now.to_unix_ms},"domInteractive":#{Time.now.to_unix_ms},"domContentLoadedEventStart":#{Time.now.to_unix_ms},"domContentLoadedEventEnd":#{Time.now.to_unix_ms},"domComplete":#{Time.now.to_unix_ms},"loadEventStart":#{Time.now.to_unix_ms},"loadEventEnd":#{Time.now.to_unix_ms}}},"end":#{Time.now.to_unix_ms},"timeToSubmit":108873,"form":{"email":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[],"width":290,"height":43,"checksum":"C860E86B","time":12773,"autocomplete":false,"prefilled":false},"password":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[],"width":290,"height":43,"time":10353,"autocomplete":false,"prefilled":false}},"canvas":{"hash":-373378155,"emailHash":-1447130560,"histogramBins":[]},"token":null,"errors":[],"metrics":[{"n":"fwcim-mercury-collector","t":0},{"n":"fwcim-instant-collector","t":0},{"n":"fwcim-element-telemetry-collector","t":2},{"n":"fwcim-script-version-collector","t":0},{"n":"fwcim-local-storage-identifier-collector","t":0},{"n":"fwcim-timezone-collector","t":0},{"n":"fwcim-script-collector","t":1},{"n":"fwcim-plugin-collector","t":0},{"n":"fwcim-capability-collector","t":1},{"n":"fwcim-browser-collector","t":0},{"n":"fwcim-history-collector","t":0},{"n":"fwcim-gpu-collector","t":1},{"n":"fwcim-battery-collector","t":0},{"n":"fwcim-dnt-collector","t":0},{"n":"fwcim-math-fingerprint-collector","t":0},{"n":"fwcim-performance-collector","t":0},{"n":"fwcim-timer-collector","t":0},{"n":"fwcim-time-to-submit-collector","t":0},{"n":"fwcim-form-input-telemetry-collector","t":4},{"n":"fwcim-canvas-collector","t":2},{"n":"fwcim-captcha-telemetry-collector","t":0},{"n":"fwcim-proof-of-work-collector","t":1},{"n":"fwcim-ubf-collector","t":0},{"n":"fwcim-timer-collector","t":0}]}))
+      inputs["metadata1"] = Audible::Crypto.encrypt_metadata(%({"start":#{Time.now.to_unix_ms},"interaction":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[]},"version":"3.0.0","lsUbid":"X39-6721012-8795219:1549849158","timeZone":-6,"scripts":{"dynamicUrls":["https://images-na.ssl-images-amazon.com/images/I/61HHaoAEflL._RC|11-BZEJ8lnL.js,01qkmZhGmAL.js,71qOHv6nKaL.js_.js?AUIClients/AudibleiOSMobileWhiteAuthSkin#mobile","https://images-na.ssl-images-amazon.com/images/I/21T7I7qVEeL._RC|21T1XtqIBZL.js,21WEJWRAQlL.js,31DwnWh8lFL.js,21VKEfzET-L.js,01fHQhWQYWL.js,51TfwrUQAQL.js_.js?AUIClients/AuthenticationPortalAssets#mobile","https://images-na.ssl-images-amazon.com/images/I/0173Lf6yxEL.js?AUIClients/AuthenticationPortalInlineAssets","https://images-na.ssl-images-amazon.com/images/I/211S6hvLW6L.js?AUIClients/CVFAssets","https://images-na.ssl-images-amazon.com/images/G/01/x-locale/common/login/fwcim._CB454428048_.js"],"inlineHashes":[-1746719145,1334687281,-314038750,1184642547,-137736901,318224283,585973559,1103694443,11288800,-1611905557,1800521327,-1171760960,-898892073],"elapsed":52,"dynamicUrlCount":5,"inlineHashesCount":13},"plugins":"unknown||320-568-548-32-*-*-*","dupedPlugins":"unknown||320-568-548-32-*-*-*","screenInfo":"320-568-548-32-*-*-*","capabilities":{"js":{"audio":true,"geolocation":true,"localStorage":"supported","touch":true,"video":true,"webWorker":true},"css":{"textShadow":true,"textStroke":true,"boxShadow":true,"borderRadius":true,"borderImage":true,"opacity":true,"transform":true,"transition":true},"elapsed":1},"referrer":"","userAgent":"#{headers["User-Agent"]}","location":"#{LOCALES[@locale]["AMAZON_LOGIN"].to_s}#{oauth_url}","webDriver":null,"history":{"length":1},"gpu":{"vendor":"Apple Inc.","model":"Apple A9 GPU","extensions":[]},"math":{"tan":"-1.4214488238747243","sin":"0.8178819121159085","cos":"-0.5753861119575491"},"performance":{"timing":{"navigationStart":#{Time.now.to_unix_ms},"unloadEventStart":0,"unloadEventEnd":0,"redirectStart":0,"redirectEnd":0,"fetchStart":#{Time.now.to_unix_ms},"domainLookupStart":#{Time.now.to_unix_ms},"domainLookupEnd":#{Time.now.to_unix_ms},"connectStart":#{Time.now.to_unix_ms},"connectEnd":#{Time.now.to_unix_ms},"secureConnectionStart":#{Time.now.to_unix_ms},"requestStart":#{Time.now.to_unix_ms},"responseStart":#{Time.now.to_unix_ms},"responseEnd":#{Time.now.to_unix_ms},"domLoading":#{Time.now.to_unix_ms},"domInteractive":#{Time.now.to_unix_ms},"domContentLoadedEventStart":#{Time.now.to_unix_ms},"domContentLoadedEventEnd":#{Time.now.to_unix_ms},"domComplete":#{Time.now.to_unix_ms},"loadEventStart":#{Time.now.to_unix_ms},"loadEventEnd":#{Time.now.to_unix_ms}}},"end":#{Time.now.to_unix_ms},"timeToSubmit":108873,"form":{"email":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[],"width":290,"height":43,"checksum":"C860E86B","time":12773,"autocomplete":false,"prefilled":false},"password":{"keys":0,"keyPressTimeIntervals":[],"copies":0,"cuts":0,"pastes":0,"clicks":0,"touches":0,"mouseClickPositions":[],"keyCycles":[],"mouseCycles":[],"touchCycles":[],"width":290,"height":43,"time":10353,"autocomplete":false,"prefilled":false}},"canvas":{"hash":-373378155,"emailHash":-1447130560,"histogramBins":[]},"token":null,"errors":[],"metrics":[{"n":"fwcim-mercury-collector","t":0},{"n":"fwcim-instant-collector","t":0},{"n":"fwcim-element-telemetry-collector","t":2},{"n":"fwcim-script-version-collector","t":0},{"n":"fwcim-local-storage-identifier-collector","t":0},{"n":"fwcim-timezone-collector","t":0},{"n":"fwcim-script-collector","t":1},{"n":"fwcim-plugin-collector","t":0},{"n":"fwcim-capability-collector","t":1},{"n":"fwcim-browser-collector","t":0},{"n":"fwcim-history-collector","t":0},{"n":"fwcim-gpu-collector","t":1},{"n":"fwcim-battery-collector","t":0},{"n":"fwcim-dnt-collector","t":0},{"n":"fwcim-math-fingerprint-collector","t":0},{"n":"fwcim-performance-collector","t":0},{"n":"fwcim-timer-collector","t":0},{"n":"fwcim-time-to-submit-collector","t":0},{"n":"fwcim-form-input-telemetry-collector","t":4},{"n":"fwcim-canvas-collector","t":2},{"n":"fwcim-captcha-telemetry-collector","t":0},{"n":"fwcim-proof-of-work-collector","t":1},{"n":"fwcim-ubf-collector","t":0},{"n":"fwcim-timer-collector","t":0}]}))
 
       raw_params = {} of String => Array(String)
       inputs.each { |key, value| raw_params[key] = [value] }
 
       body = HTTP::Params.new(raw_params).to_s
 
-      headers["Referer"] = "https://www.amazon.com#{oauth_url}"
+      headers["Referer"] = "#{LOCALES[@locale]["AMAZON_LOGIN"].to_s}#{oauth_url}"
       headers["Content-Type"] = "application/x-www-form-urlencoded"
 
       response = client.post(signin_url, headers, body: body)
@@ -195,9 +189,11 @@ module Audible
         end
       end
 
-      captcha = body.xpath_node(%q(//img[@alt="Visual CAPTCHA image, continue down for an audio option."])).try &.["src"]
+      captcha = body.xpath_node(%q(//div[@id="auth-captcha-image-container"]/img)).try &.["src"]
       if !captcha
-        raise "Could not find CAPTCHA"
+        error_message = body.xpath_node(%q(//div[@id="auth-error-message-box"]/div/div/ul)).try &.content.strip ||
+                        "Could not find CAPTCHA."
+        raise error_message
       end
 
       guess = captcha_callback.call(captcha)
@@ -260,7 +256,9 @@ module Audible
 
         auth_register
       else
-        raise "Unable to login."
+        error_message = XML.parse_html(response.body).xpath_node(%q(//div[@id="auth-error-message-box"]/div/div/ul)).try &.content.strip ||
+                        "Unable to login."
+        raise error_message
       end
     end
 
@@ -283,7 +281,7 @@ module Audible
                 end
               end
 
-              json.field "domain", ".amazon.com"
+              json.field "domain", LOCALES[@locale]["auth_register_domain"]
             end
           end
 
@@ -332,15 +330,15 @@ module Audible
         end
       end
 
-      client = HTTP::Client.new(AMAZON_API)
+      client = HTTP::Client.new(LOCALES[@locale]["AMAZON_API"])
       headers = HTTP::Headers.new
-      headers["Host"] = "api.amazon.com"
+      headers["Host"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
       headers["Content-Type"] = "application/json"
       headers["Accept-Charset"] = "utf-8"
-      headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
+      headers["x-amzn-identity-auth-domain"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
       headers["Accept"] = "application/json"
       headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
-      headers["Accept-Language"] = "en_US"
+      headers["Accept-Language"] = LOCALES[@locale]["Accept-Language"]
       headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
 
       response = client.post("/auth/register", headers, body: body)
@@ -372,15 +370,15 @@ module Audible
         end
       end
 
-      client = HTTP::Client.new(AMAZON_API)
+      client = HTTP::Client.new(LOCALES[@locale]["AMAZON_API"])
       headers = HTTP::Headers.new
-      headers["Host"] = "api.amazon.com"
+      headers["Host"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
       headers["Content-Type"] = "application/x-www-form-urlencoded"
       headers["Accept-Charset"] = "utf-8"
-      headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
+      headers["x-amzn-identity-auth-domain"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
       headers["Accept"] = "application/json"
       headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
-      headers["Accept-Language"] = "en_US"
+      headers["Accept-Language"] = LOCALES[@locale]["Accept-Language"]
       headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
       headers["Authorization"] = "Bearer #{@access_token}"
 
@@ -405,10 +403,10 @@ module Audible
         "source_token_type"    => "refresh_token",
       }
 
-      client = HTTP::Client.new(AMAZON_API)
+      client = HTTP::Client.new(LOCALES[@locale]["AMAZON_API"])
       headers = HTTP::Headers.new
       headers["Content-Type"] = "application/x-www-form-urlencoded"
-      headers["x-amzn-identity-auth-domain"] = "api.amazon.com"
+      headers["x-amzn-identity-auth-domain"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
 
       response = client.post("/auth/token", headers, form: body)
       body = JSON.parse(response.body)
@@ -424,11 +422,11 @@ module Audible
     def user_profile : JSON::Any
       client = HTTP::Client.new(AMAZON_API)
       headers = HTTP::Headers.new
-      headers["Host"] = "api.amazon.com"
+      headers["Host"] = LOCALES[@locale]["AMAZON_API"].host.not_nil!
       headers["Cookie"] = @login_cookies.map { |key, value| "#{key}=#{value}" }.join("; ")
       headers["Accept-Charset"] = "utf-8"
       headers["User-Agent"] = "AmazonWebView/Audible/3.7/iOS/12.3.1/iPhone"
-      headers["Accept-Language"] = "en_US"
+      headers["Accept-Language"] = LOCALES[@locale]["Accept-Language"]
       headers["Authorization"] = "Bearer #{@access_token}"
 
       return JSON.parse(get("/user/profile", headers).body)
@@ -461,7 +459,7 @@ module Audible
       # request.headers["Accept"] = "application/json"
       # request.headers["Content-Type"] = "application/json"
 
-      client = HTTP::Client.new(AUDIBLE_API)
+      client = HTTP::Client.new(LOCALES[@locale]["AUDIBLE_API"])
       client.exec request
     end
 

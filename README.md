@@ -32,12 +32,11 @@ Sessions can be saved using `to_json` and `from_json`, like so:
 ```crystal
 require "audible"
 
-client = Audible::Client.new("EMAIL", "PASSWORD")
+client = Audible::Client.new("EMAIL", "PASSWORD", locale: "us")
 File.write("session.json", client.to_json)
 
 # Sometime later...
 client = Audible::Client.from_json(File.read("session.json"))
-
 ```
 
 Logging in currently requires answering a CAPTCHA. By default a user prompt will be provided using `readline`, which looks like:
@@ -52,10 +51,10 @@ A custom callback can be provided (for example submitting the CAPTCHA to an exte
 ```crystal
 require "audible"
 
-client = Audible::Client.new("EMAIL", "PASSWORD") do |captcha_url|
+client = Audible::Client.new("EMAIL", "PASSWORD", locale: "us") do |captcha_url|
   # Do some things with the captcha_url ...
 
-  return "My answer for CAPTCHA"
+  "My answer for CAPTCHA"
 end
 ```
 
@@ -74,12 +73,22 @@ def custom_otp_callback
   return "My OTP code"
 end
 
-client = Audible::Client.new("USERNAME", "PASSWORD", otp_callback: ->custom_otp_callback)
+client = Audible::Client.new("USERNAME", "PASSWORD", locale: "us", otp_callback: ->custom_otp_callback)
 
 # Or directly as proc:
 
-client = Audible::Client.new("USERNAME", "PASSWORD", otp_callback: ->{ return "My OTP code"})
+client = Audible::Client.new("USERNAME", "PASSWORD", locale: "us", otp_callback: ->{ return "My OTP code" })
 ```
+
+## Locales
+
+This API supports 5 countries natively:
+
+- USA (locale: "us")
+- Germany (locale: "de")
+- United Kingdom (locale: "uk")
+- France (locale: "fr")
+- Canada (locale: "ca")
 
 ## Authentication
 
