@@ -404,6 +404,27 @@ content_url = JSON.parse(client.post("/1.0/content/B002V0QUOC/licenserequest", b
 
 ```
 
+**Note**: `content_url` is now provided in `.aaxc` format, which ffmpeg does **not** currently support, see [mkb79/Audible#3](https://github.com/mkb79/Audible/issues/3). For now you can use the following to get files in `.aax` format:
+
+```crystal
+require "audible"
+
+asin = "some_asin"
+codec = "some_codec" # Desired quality from /1.0/library/{asin}?response_groups=product_attrs,relationships
+
+client = Audible::Client.from_json(File.read("session.json"))
+
+request = HTTP::Request.new("GET", "/FionaCDEServiceEngine/FSDownloadContent?type=AUDI&currentTransportMethod=WIFI&key=#{asin}&codec=#{codec}")
+request = client.sign_request(request)
+
+tld = Audible::LOCALES[client.locale]["AUDIBLE_API"].to_s.split("api.audible.")[1]
+content_url = HTTP::Client.new(URI.parse("https://cde-ta-g7g.amazon.com")).exec(request)
+  .headers["Location"].gsub("https://cds.audible.com", "https://cds.audible.#{tld}") # => https://cds.audible.com/download...
+
+# `content_url` can then be downloaded using any tool
+
+```
+
 Assuming you have your activation bytes, you can convert .aax into another format with the following:
 
 ```

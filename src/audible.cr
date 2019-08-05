@@ -42,7 +42,7 @@ module Audible
     def self.from_json(body : Hash(String, JSON::Any))
       client = new
 
-      client.login_cookies = Hash.zip(body["login_cookies"].as_h.keys, body["login_cookies"].as_h.values.map { |value| value.as_s })
+      client.login_cookies = body["login_cookies"].as_h.transform_values { |value| value.as_s }
       client.adp_token = body["adp_token"].as_s
       client.access_token = body["access_token"].as_s
       client.refresh_token = body["refresh_token"].as_s
