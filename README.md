@@ -5,6 +5,9 @@ Interface for internal Audible API.
 ## Other Implementations
 
 - [Audible](https://github.com/mkb79/Audible) (Python)
+- [AudibleApi](https://github.com/rmcrackan/AudibleApi) (C#)
+
+See also [AudiobookHub](https://github.com/rmcrackan/AudiobookHub) for a list of handy resources for managing audiobooks.
 
 ## Installation
 
