@@ -67,7 +67,7 @@ describe Audible do
     END_RSA_PRIVATE_KEY
     )
 
-    date = Time.new(2016, 2, 15, 10, 20, 30).to_rfc3339 # => 2016-02-15T16:20:30Z
+    date = Time.utc(2016, 2, 15, 10, 20, 30).to_rfc3339 # => 2016-02-15T10:20:30Z
 
     it "signs GET request" do
       body = IO::Memory.new("")
@@ -75,7 +75,7 @@ describe Audible do
       headers = Audible::Crypto.sign_request("/0.0/library/books?purchaseAfterDate=01/01/1970", "GET", body, adp_token, device_private_key, date)
       headers["x-adp-token"].should eq(adp_token)
       headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
-      headers["x-adp-signature"].should eq("MLSyxJQdp8wr5XifjWU3gaQGWmhuma6WLUc5sSR4jkXoAaufPi5GmaXIK+rdSAQ7NF+PS4msOf11K2TdqrOaYmXSXGW4pFYzYaaPmTT+dYhZUQL/Fl4Kta9a6+Dg0b+dSVKMWswkHAOnjdb8gyXPc4hfpzoR96MlwP8Bqb9WyigQb4/r7G4FFrjeqepBCMb3elNvv1UlrwkY1TtLu1fKIAlDHW+TOkQweViapOJqjieM+H5UHnvcbPIzo0ePVyBeWVMPpsbgBNI7VR3Ecn9ClkXUvf+DziXfQb1D8e2udyQf3iT53KzU6ZxMRkbMzZy7MdNjpJr4r/OtmbRLwTJq+Q==:2016-02-15T16:20:30Z")
+      headers["x-adp-signature"].should eq("n57OlyMFT8ZsWIVktVRZw0FKjonQB2RBqUWyV42ied8bdCMwAMW4IhapE+z+W2h9qZ6rJ0QUUfZKKzPXSA/JnJANBJHrnsUG9P1APBb41WHyMEBaP1z15R2PzA4diW+T7QJSIEayxF5N0mcpstsRX797kEE+sai3Oro1MeVGZk72te/RJcLjdmlddo/dfGU42aAdEMoSAd2R5oDWW2RN59K77UejgMczCTGJZFSQEs3RqxUN3mKIrwqpI9GaZmKC9rFpFeMaYNiljAYNeGUovJSE/Z4AZy1GnR/apCv1eJ//u7UR1DVyQz6bAF4pUMxFK+2eSQ89cOLJBM8JqJj4UQ==:2016-02-15T10:20:30Z")
     end
 
     it "signs POST request" do
@@ -83,7 +83,7 @@ describe Audible do
       headers = Audible::Crypto.sign_request("/1.0/wishlist", "POST", body, adp_token, device_private_key, date)
       headers["x-adp-token"].should eq(adp_token)
       headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
-      headers["x-adp-signature"].should eq("YKyc3V3E3s96OHFY8WAxOTZtYMc5awjvFBDZRiY3jZbFGIq9YWrgocZ4Rxix8W1NrJk/L8rbeLqDlpeq8zUDopU/hfM8mfdAd308XV7qeekjxTLsz/52V5i6d3W4H/91cWqbQdko20iKpbAAW5BUBXJpb4pnt37BBZApiZ/rCyVdkO/XZFS8e0dW2fCgXlr/4B7rm6bBPXf6IK2nQffI4Qf0p5ByWoeFzHtIQDadi6KM6r7yzp5iTsOlxp/dCowKHtp7u+VxUoFIiMGdOqG8FLnPJsTftwy6XQenvyV+4HHOjbo+ue1pdAznxpQJvlE1cDnOGSIOt5jQUP7WZZemvg==:2016-02-15T16:20:30Z")
+      headers["x-adp-signature"].should eq("wcDQXg4TCCQ7t71YDsjB8YpP1hoPXK1YGStZqTLpHuJfCN8hYo4fYFFLiqnJpw+fT1k2w5BcEaBjpvq9+fVO+bwbov0jIC7iLVq8Yx7ikmh6FbOxQVTJmahSlxsjLIaGknQRVhOHCm2QvDc8oCq+6zX2O81gHGzwnjc+ZCuo3rVsa5XqTCy+N4ZNoSH+eUWPmqnw8NGWAH19Kx92P7e+1/TSa6J/idLi6gHv5uIlHgPe2HHcvYpOtOzLzdINwgIjFvJBtmkkYoIwiFg7MH20U8uKctUj9cZXifrLcDmv6qAAsb5k1AFwYQFkW6xNVxZ4mcq2/et2uj/f3aAuJXVZCg==:2016-02-15T10:20:30Z")
     end
 
     it "signs DELETE request" do
@@ -92,7 +92,7 @@ describe Audible do
       headers = Audible::Crypto.sign_request("/1.0/wishlist/B002V02KPU", "DELETE", body, adp_token, device_private_key, date)
       headers["x-adp-token"].should eq(adp_token)
       headers["x-adp-alg"].should eq("SHA256withRSA:1.0")
-      headers["x-adp-signature"].should eq("tbM0YMdlpRY57Okw8KqgqfDbk/xYJKP6TFc90TWPbkh7TwTioRK+G6F/Lcai2BW6ddAxJAHfpW0+vlxLRSQ+RqAAYirS+D5hyu73Uo/h6CKnqm7cw2qneg0BOVjHdceoM6JMn0y0S4JKZ1CJAoNqYSdX/sJgXCwP+TK1JqUWKfa/5HoiICmm7QT0GqK9qfu0UTOCx7HOk6s6fbSA+6b/1GGhQjj10ez+s5OMe+RYOZ/SoxKla8vTvx1TABIa+ZVMvC07GOrLw8xhUeq/Kgm4Hq2IqGwH3raGQ2RHkHJxZ+k2UojcVkqCpC3hPFnTMVfQ67aj9JXtFvil8iD7lSgSOw==:2016-02-15T16:20:30Z")
+      headers["x-adp-signature"].should eq("x12k8us5tvn7IDPTvcuTTh8wMeGSI5OmitopTi7qtMuck9t6uHKpcM5PRCeQNBai1LEq2m4P01GhWAEx7/7bCi2+ufwybqYjX1/Ft8IYjX9Yj5ObrsYBUZb7zDpOhZw8DtwCiIpiKmm5h0ZalrXHfafFrM6E/PYLk9Pw3prvf8FpGK0dGwUhOxnPdTU/uw6N1R/uzQJ/zwMnxm2K/0hX9aiKtzXWSt/b2BjyFxPbGE7isTZPKwQEJfcSVwWJ5KFJdX5qbQEY7jmjRRL03XGHJdrIwGkz1c3nD8mpuAhCea2eBOMjdcX5g5DDDT5SQ9SCE+METCmI3+D9wTMhwmnfzg==:2016-02-15T10:20:30Z")
     end
   end
 end

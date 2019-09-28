@@ -27,7 +27,7 @@ module Audible
       return request
     end
 
-    def self.sign_request(url, method, body, adp_token, private_key, date = Time.now.to_rfc3339)
+    def self.sign_request(url, method, body, adp_token, private_key, date = Time.utc.to_rfc3339)
       data = "#{method}\n#{url}\n#{date}\n"
       if body
         data += body.gets_to_end
@@ -73,14 +73,14 @@ module Audible
       while minor_rounds > 0
         minor_rounds -= 1
 
-        inner_roll += wrap_constant
+        inner_roll &+= wrap_constant
         inner_variable = inner_roll >> 2 & 3
 
         rounds.times do |i|
           first = temp2[(i + 1) % rounds]
-          last = temp2[i] +=
-            (last >> 5 ^ first << 2) + (first >> 3 ^ last << 4) ^
-            (inner_roll ^ first) + (constants[i & 3 ^ inner_variable] ^ last)
+          last = temp2[i] &+=
+            (last >> 5 ^ first << 2) &+ (first >> 3 ^ last << 4) ^
+            (inner_roll ^ first) &+ (constants[i & 3 ^ inner_variable] ^ last)
         end
       end
 
@@ -102,19 +102,19 @@ module Audible
     end
 
     def self.decrypt_metadata(metadata)
-      metadata = URI.unescape(metadata).lchop("ECdITeCs:")
+      metadata = URI.decode(metadata).lchop("ECdITeCs:")
       final_round = Base64.decode(metadata)
 
       temp2 = [] of UInt32
       final_round.each_slice(4).each do |chars|
-        temp2 << (chars[0].to_u32) +
-                 (chars[1].to_u32 << 8) +
-                 (chars[2].to_u32 << 16) +
-                 (chars[3].to_u32 << 24)
+        temp2 << (chars[0].to_u32!) +
+                 (chars[1].to_u32! << 8) +
+                 (chars[2].to_u32! << 16) +
+                 (chars[3].to_u32! << 24)
       end
 
       rounds = temp2.size
-      minor_rounds = (6 + (52 / rounds)).floor
+      minor_rounds = (6 + (52 / rounds)).floor.to_i
 
       wrap_constant = 2654435769
       constants = [1888420705, 2576816180, 2347232058, 874813317]
@@ -123,14 +123,14 @@ module Audible
       inner_variable = 0
 
       (minor_rounds + 1).times do
-        inner_roll += wrap_constant
+        inner_roll &+= wrap_constant
         inner_variable = inner_roll >> 2 & 3
       end
 
       while minor_rounds > 0
         minor_rounds -= 1
 
-        inner_roll -= wrap_constant
+        inner_roll &-= wrap_constant
         inner_variable = inner_roll >> 2 & 3
 
         rounds.times do |i|
@@ -139,17 +139,17 @@ module Audible
           first = temp2[(i + 1) % rounds]
           last = temp2[(i - 1) % rounds]
 
-          last = temp2[i] -=
-            ((last >> 5 ^ first << 2) + (first >> 3 ^ last << 4) ^
-             (inner_roll ^ first) + (constants[i & 3 ^ inner_variable] ^ last)).to_u32
+          last = temp2[i] &-=
+            ((last >> 5 ^ first << 2) &+ (first >> 3 ^ last << 4) ^
+             (inner_roll ^ first) &+ (constants[i & 3 ^ inner_variable] ^ last)).to_u32!
         end
       end
 
       object = [] of Char
       temp2.each do |block|
         {0, 8, 16, 24}.each do |align|
-          if block >> align & 255 != 0
-            object << (block >> align & 255).try &.chr
+          if block.to_u32! >> align.to_u32! & 255 != 0
+            object << (block.to_u32! >> align.to_u32! & 255).try &.chr
           end
         end
       end
