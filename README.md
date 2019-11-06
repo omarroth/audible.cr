@@ -133,6 +133,24 @@ Each bullet below refers to a parameter for the request with the specified metho
 
 Responses will often provide very little info without `response_groups` specified. Multiple response groups can be specified, for example: `/1.0/catalog/products/B002V02KPU?response_groups=product_plan_details,media,review_attrs`. When providing an invalid response group, the server will return an error response but will not provide information on available response groups.
 
+### POST /1.0/orders
+
+- B asin : String
+- B audiblecreditapplied : String
+
+Example request body:
+
+```json
+{
+  "asin": "B002V1CB2Q",
+  "audiblecreditapplied": "false"
+}
+```
+
+- audiblecreditapplied: [true, false]
+
+`audiblecreditapplied` will specify whether to use available credits or default payment method.
+
 ### GET /0.0/library/books
 
 #### Deprecated: Use `/1.0/library`
