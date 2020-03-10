@@ -1,5 +1,5 @@
 name: audible
-version: 0.2.3
+version: 0.2.4
 
 authors:
   - Omar Roth <omarroth@protonmail.com>
@@ -8,7 +8,9 @@ dependencies:
   openssl_ext:
     github: randomstate/openssl_ext
     branch: master
+  readline:
+    github: crystal-lang/crystal-readline
 
-crystal: 0.31.1
+crystal: 0.33.0
 
 license: AGPLv3

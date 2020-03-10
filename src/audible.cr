@@ -14,10 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require "http/client"
+require "http"
 require "json"
 require "readline"
-require "uri"
 require "xml"
 require "./audible/*"
 
@@ -247,6 +246,7 @@ module Audible
       if response.status_code == 302
         map_landing = HTTP::Params.parse(URI.parse(response.headers["Location"]).query.not_nil!)
 
+        raise "Unable to login. Invalid URI: #{response.headers["Location"]}" if !map_landing["openid.oa2.access_token"]?
         @access_token = map_landing["openid.oa2.access_token"]
         @login_cookies = {} of String => String
 
