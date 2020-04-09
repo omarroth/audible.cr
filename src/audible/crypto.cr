@@ -49,7 +49,7 @@ module Audible
     end
 
     def self.encrypt_metadata(metadata)
-      checksum = CRC32.checksum(metadata).to_s(16).rjust(8, '0').upcase
+      checksum = Digest::CRC32.checksum(metadata).to_s(16).rjust(8, '0').upcase
       object = "#{checksum}##{metadata}"
 
       rounds = (object.size.to_f / 4).ceil.to_i
