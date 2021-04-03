@@ -1,5 +1,7 @@
 # audible.cr
 
+> See [mkb79/Audible](https://github.com/mkb79/Audible) for an actively maintained library in Python.
+
 Interface for internal Audible API.
 
 ## Other Implementations
